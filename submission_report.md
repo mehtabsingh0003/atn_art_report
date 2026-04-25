@@ -35,7 +35,7 @@ The implemented project is a **simplified ART-inspired programmable routing syst
 
 - a P4 program for packet parsing and forwarding,
 - a Mininet topology,
-- a Python controller script for installing forwarding entries,
+- a Python ML controller script for selecting and installing forwarding or drop entries,
 - and a shell script to compile and run the complete setup.
 
 This design was chosen for three reasons.
@@ -94,7 +94,15 @@ The ingress pipeline contains the main forwarding logic. Two actions are defined
 - `drop()`: marks the packet to be dropped using `mark_to_drop(standard_metadata)`.
 - `ipv4_forward(port, srcMac, dstMac)`: selects the egress port, rewrites Ethernet source and destination MAC addresses, and decrements the IPv4 TTL.
 
-The primary table is `ipv4_lpm`, which performs a longest-prefix-match lookup on `hdr.ipv4.dstAddr`. This is the core routing table of the switch. The table supports:
+The ingress pipeline now contains two important tables. The first table is `ml_policy`, which acts as the switch-resident distilled decision-tree policy. The P4 program classifies packets into size classes using the IPv4 total length:
+
+- class `0`: small packets up to 256 bytes,
+- class `1`: medium packets from 257 to 500 bytes,
+- class `2`: large packets above 500 bytes.
+
+The `ml_policy` table matches on the packet-size class and destination prefix. Its actions either allow the packet to continue to routing or drop it immediately. This is the closest practical implementation of the ART paper's in-network decision-tree idea in this mini-project.
+
+The second table is `ipv4_lpm`, which performs a longest-prefix-match lookup on `hdr.ipv4.dstAddr`. This is the core routing table of the switch. The table supports:
 
 - `ipv4_forward`
 - `drop`
@@ -102,7 +110,7 @@ The primary table is `ipv4_lpm`, which performs a longest-prefix-match lookup on
 
 The default action is `drop()`, which is a safe design choice because it prevents accidental forwarding of packets that do not match any route.
 
-In the `apply` block, the switch checks if the IPv4 header is valid. If the packet is IPv4, the `ipv4_lpm` table is applied. If not, the packet is dropped. This makes the behavior deterministic and easy to understand.
+In the `apply` block, the switch checks if the IPv4 header is valid. If the packet is IPv4, the packet-size class is computed, `ml_policy` is applied first, and only allowed packets continue to `ipv4_lpm`. If the packet is not IPv4, it is dropped. This makes the behavior deterministic and closer to ART's design: learned policy first, forwarding table second.
 
 #### 4.5 Egress Pipeline
 
@@ -131,23 +139,31 @@ The program uses the full `V1Switch` package:
 
 This is important because the latest `v1model` definition expects all these blocks during package instantiation.
 
-### 5. Controller Logic
+### 5. Controller and ML Logic
 
-The mini-project includes a Python controller script, `controller.py`, which installs entries into the BMv2 switch at runtime. While this controller is simpler than the ART paper's adaptive control plane, it still demonstrates the idea that forwarding behavior can be controlled externally rather than hard-coded into the switch.
+The mini-project includes a Python controller script, `controller.py`, which installs entries into the BMv2 switch at runtime. The important architectural point is that training and policy generation are implemented in the control plane. The P4 data plane enforces the distilled decision-tree policy through match-action rules in `ml_policy`.
 
-The controller installs two LPM routes:
+The controller trains a small decision-tree classifier using traffic features:
+
+- packet length,
+- queue depth,
+- flow count.
+
+The classifier predicts `FORWARD` or `DROP` for each destination prefix and packet-size class. The controller translates the prediction into `ml_policy` entries. Allowed packets then use `ipv4_lpm` to select the output port. This mirrors ART's teacher-student idea in simplified form: the model is trained in Python, then the resulting decision policy is pushed into the switch as table rules.
+
+With the default demo metrics, the controller forwards both demo prefixes:
 
 - `10.0.1.0/24 -> port 1`
 - `10.0.2.0/24 -> port 2`
 
-For each route, the controller also provides:
+For each forwarded route, the controller also provides:
 
 - the source MAC address that the switch should use on the outgoing interface,
 - the destination MAC address of the host connected to that subnet.
 
 This allows the BMv2 switch to behave like a small IPv4 router between the two subnets.
 
-The controller interacts with the switch using `simple_switch_CLI` over the thrift interface. Although the ART paper uses richer controller-switch interaction through P4Runtime and dynamic rule updates, the static controller in this project is still a correct and practical approximation for a mini-project setting.
+The controller interacts with the switch using `simple_switch_CLI` over the thrift interface. Although the ART paper uses richer controller-switch interaction through P4Runtime and digests, this project now demonstrates the same separation of responsibility: ML-based policy selection in Python and fast rule execution in P4/BMv2.
 
 ### 6. Experimental Setup
 
@@ -249,6 +265,13 @@ sudo mn -c
 bash run.sh test
 ```
 
+To run the topology while installing a policy that drops the large-packet class for `h2`:
+
+```bash
+cd /mnt/e/ATN/p4-mini-project
+bash run.sh test --h2-pkt-len 800
+```
+
 This is the recommended command for the evaluator because it performs compilation, switch startup, rule installation, ping testing, and a short `iperf3` throughput test in one run.
 
 #### 7.3 Manual Compilation Command
@@ -302,15 +325,51 @@ The rule installation logic is implemented in `controller.py`. To print the comm
 python3 controller.py --dry-run
 ```
 
+To demonstrate a drop decision from the ML controller, a larger packet-length feature can be supplied:
+
+```bash
+python3 controller.py --dry-run --h2-pkt-len 800
+```
+
 If `controller.py` is run without the topology already running, it will fail because no BMv2 switch is listening on thrift port `9090`. Therefore, the correct order is:
 
 1. start the topology with `bash run.sh`, `bash run.sh test`, or `sudo /usr/bin/python3 topology.py`
 2. allow the switch to start on thrift port `9090`
 3. then run the controller, or let `topology.py` call it automatically
 
-The generated commands are:
+With the default metrics, the generated ML decisions and commands are:
 
 ```text
+ML controller decisions:
+  10.0.1.0/24: pkt_len=128, class=small, queue_depth=2, flows=1 -> FORWARD (confidence=0.90)
+  10.0.2.0/24: pkt_len=128, class=small, queue_depth=2, flows=1 -> FORWARD (confidence=0.90)
+BMv2 CLI commands:
+table_set_default ml_policy drop
+table_add ml_policy allow_route 0 10.0.1.0/24 =>
+table_add ml_policy allow_route 1 10.0.1.0/24 =>
+table_add ml_policy allow_route 2 10.0.1.0/24 =>
+table_add ml_policy allow_route 0 10.0.2.0/24 =>
+table_add ml_policy allow_route 1 10.0.2.0/24 =>
+table_add ml_policy allow_route 2 10.0.2.0/24 =>
+table_set_default ipv4_lpm drop
+table_add ipv4_lpm ipv4_forward 10.0.1.0/24 => 1 00:aa:bb:00:00:01 00:04:00:00:01:10
+table_add ipv4_lpm ipv4_forward 10.0.2.0/24 => 2 00:aa:bb:00:00:02 00:04:00:00:02:10
+```
+
+With `--h2-pkt-len 800`, the controller instead produces:
+
+```text
+ML controller decisions:
+  10.0.1.0/24: pkt_len=128, class=small, queue_depth=2, flows=1 -> FORWARD (confidence=0.90)
+  10.0.2.0/24: pkt_len=800, class=large, queue_depth=2, flows=1 -> DROP (confidence=0.90)
+BMv2 CLI commands:
+table_set_default ml_policy drop
+table_add ml_policy allow_route 0 10.0.1.0/24 =>
+table_add ml_policy allow_route 1 10.0.1.0/24 =>
+table_add ml_policy allow_route 2 10.0.1.0/24 =>
+table_add ml_policy allow_route 0 10.0.2.0/24 =>
+table_add ml_policy allow_route 1 10.0.2.0/24 =>
+table_add ml_policy drop 2 10.0.2.0/24 =>
 table_set_default ipv4_lpm drop
 table_add ipv4_lpm ipv4_forward 10.0.1.0/24 => 1 00:aa:bb:00:00:01 00:04:00:00:01:10
 table_add ipv4_lpm ipv4_forward 10.0.2.0/24 => 2 00:aa:bb:00:00:02 00:04:00:00:02:10
@@ -343,7 +402,7 @@ The following observations are expected:
 - the P4 program compiles successfully,
 - the `build/` directory contains `basic_ml.json` and `basic_ml.p4i`,
 - BMv2 loads the generated JSON program correctly,
-- the controller successfully installs the `ipv4_lpm` entries,
+- the controller successfully installs the `ml_policy` and `ipv4_lpm` entries,
 - `h1` can ping `h2`,
 - returned ICMP packets show `ttl=63`, indicating that the router decremented the TTL,
 - `iperf3` completes successfully between the two hosts,
@@ -376,12 +435,12 @@ The implemented mini-project successfully demonstrates the following:
 - default drop behavior,
 - runtime installation of forwarding rules.
 
-This is an important result because it shows that the switch-side behavior required by ART can be implemented cleanly in P4 and tested on BMv2. While the current project does not reproduce the full adaptive learning pipeline of the paper, it does capture the essential programmable forwarding component on which ART depends.
+This is an important result because it shows that the switch-side behavior required by ART can be implemented cleanly in P4 and tested on BMv2. The current project also includes a compact ML controller that selects forward or drop behavior and distills that behavior into the switch-resident `ml_policy` table. While it does not reproduce the full DRL training and P4Runtime pipeline of the paper, it now captures the essential control-plane/data-plane split and the decision-tree-in-switch enforcement idea on which ART depends.
 
-The main limitation of the current implementation is that the routing policy is still static. The controller installs pre-defined rules rather than generating them from live network measurements or a decision-tree model. As a result, this project should be described as a **simplified reproduction inspired by ART**, not as a full reproduction of the complete research system.
+The main limitation of the current implementation is that the ML features are supplied as demo inputs rather than collected from live switch telemetry through P4Runtime digests. As a result, this project should be described as a **simplified reproduction inspired by ART**, not as a full reproduction of the complete research system.
 
 ### 9. Conclusion
 
 This project studied the paper **"Routing with ART: Adaptive Routing for P4 Switches With In-Network Decision Trees"** and implemented a compact programmable-routing prototype based on its data-plane goals. The paper's core contribution is the conversion of complex learning-based routing logic into a simple switch-executable form. The implemented mini-project reflects that direction by building a working BMv2 router in P4, connecting it to a Mininet topology, and controlling it through a Python-based rule installer.
 
-The project successfully compiles, runs, and forwards traffic between two subnets. It therefore provides a reproducible and practical demonstration of programmable routing with P4, along with a solid foundation for future work such as dynamic rule updates, richer topologies, telemetry-based routing decisions, or a controller that more closely matches the full ART architecture.
+The project successfully compiles, runs, and forwards traffic between two subnets. It also demonstrates ML-based control-plane decision making through `controller.py`, where the learned policy selects `FORWARD` or `DROP` before BMv2 table entries are installed. It therefore provides a reproducible and practical demonstration of programmable routing with P4, along with a solid foundation for future work such as live telemetry collection, P4Runtime/gRPC rule updates, richer topologies, or a controller that more closely matches the full ART architecture.

@@ -30,6 +30,8 @@ struct headers {
 }
 
 struct metadata {
+    bit<2> packet_class;
+    bit<1> route_allowed;
 }
 
 parser MyParser(
@@ -68,6 +70,10 @@ control MyIngress(
         mark_to_drop(standard_metadata);
     }
 
+    action allow_route() {
+        meta.route_allowed = 1;
+    }
+
     action ipv4_forward(bit<9> port, bit<48> srcMac, bit<48> dstMac) {
         standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = srcMac;
@@ -78,6 +84,20 @@ control MyIngress(
         } else {
             drop();
         }
+    }
+
+    table ml_policy {
+        key = {
+            meta.packet_class: exact;
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            allow_route;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = drop();
     }
 
     table ipv4_lpm {
@@ -95,7 +115,20 @@ control MyIngress(
 
     apply {
         if (hdr.ipv4.isValid()) {
-            ipv4_lpm.apply();
+            meta.route_allowed = 0;
+
+            if (hdr.ipv4.totalLen <= 256) {
+                meta.packet_class = 0;
+            } else if (hdr.ipv4.totalLen <= 500) {
+                meta.packet_class = 1;
+            } else {
+                meta.packet_class = 2;
+            }
+
+            ml_policy.apply();
+            if (meta.route_allowed == 1) {
+                ipv4_lpm.apply();
+            }
         } else {
             drop();
         }

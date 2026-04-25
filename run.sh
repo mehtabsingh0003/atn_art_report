@@ -28,6 +28,9 @@ if [[ "${MODE}" == "test" ]]; then
 elif [[ "${MODE}" == "nocli" ]]; then
   TOPO_ARGS+=(--no-cli)
 fi
+if [[ "$#" -gt 1 ]]; then
+  TOPO_ARGS+=("${@:2}")
+fi
 
 mkdir -p "$BUILD_DIR"
 if [[ -n "${LD_LIBRARY_PATH:-}" ]]; then

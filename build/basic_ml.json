@@ -3,7 +3,11 @@
     {
       "name" : "scalars_0",
       "id" : 0,
-      "fields" : []
+      "fields" : [
+        ["metadata.packet_class", 2, false],
+        ["metadata.route_allowed", 1, false],
+        ["_padding_0", 5, false]
+      ]
     },
     {
       "name" : "standard_metadata",
@@ -176,7 +180,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-        "line" : 139,
+        "line" : 172,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
@@ -193,7 +197,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-        "line" : 118,
+        "line" : 151,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },
@@ -255,26 +259,10 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.drop",
+      "name" : "NoAction",
       "id" : 1,
       "runtime_data" : [],
-      "primitives" : [
-        {
-          "op" : "mark_to_drop",
-          "parameters" : [
-            {
-              "type" : "header",
-              "value" : "standard_metadata"
-            }
-          ],
-          "source_info" : {
-            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 68,
-            "column" : 8,
-            "source_fragment" : "mark_to_drop(standard_metadata)"
-          }
-        }
-      ]
+      "primitives" : []
     },
     {
       "name" : "MyIngress.drop",
@@ -291,7 +279,7 @@
           ],
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 68,
+            "line" : 70,
             "column" : 8,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
@@ -299,8 +287,78 @@
       ]
     },
     {
-      "name" : "MyIngress.ipv4_forward",
+      "name" : "MyIngress.drop",
       "id" : 3,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 70,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 4,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 70,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.allow_route",
+      "id" : 5,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.route_allowed"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 74,
+            "column" : 8,
+            "source_fragment" : "meta.route_allowed = 1"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.ipv4_forward",
+      "id" : 6,
       "runtime_data" : [
         {
           "name" : "port",
@@ -330,7 +388,7 @@
           ],
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 72,
+            "line" : 78,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = port"
           }
@@ -349,7 +407,7 @@
           ],
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 73,
+            "line" : 79,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.srcAddr = srcMac"
           }
@@ -368,7 +426,7 @@
           ],
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 74,
+            "line" : 80,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.dstAddr = dstMac"
           }
@@ -377,7 +435,7 @@
           "op" : "_jump_if_zero",
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 76,
+            "line" : 82,
             "column" : 8,
             "source_fragment" : "if"
           },
@@ -449,7 +507,7 @@
           ],
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 77,
+            "line" : 83,
             "column" : 12,
             "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
           }
@@ -458,7 +516,7 @@
           "op" : "_jump",
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 76,
+            "line" : 82,
             "column" : 8,
             "source_fragment" : "if"
           },
@@ -479,9 +537,113 @@
           ],
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 68,
+            "line" : 70,
             "column" : 8,
             "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "basic_ml121",
+      "id" : 7,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.packet_class"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 121,
+            "column" : 16,
+            "source_fragment" : "meta.packet_class = 0"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "basic_ml123",
+      "id" : 8,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.packet_class"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 123,
+            "column" : 16,
+            "source_fragment" : "meta.packet_class = 1"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "basic_ml125",
+      "id" : 9,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.packet_class"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x02"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 125,
+            "column" : 16,
+            "source_fragment" : "meta.packet_class = 2"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "basic_ml118",
+      "id" : 10,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.route_allowed"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 118,
+            "column" : 12,
+            "source_fragment" : "meta.route_allowed = 0"
           }
         }
       ]
@@ -493,18 +655,178 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-        "line" : 62,
+        "line" : 64,
         "column" : 8,
         "source_fragment" : "MyIngress"
       },
       "init_table" : "node_2",
       "tables" : [
         {
-          "name" : "MyIngress.ipv4_lpm",
+          "name" : "tbl_basic_ml118",
           "id" : 0,
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 83,
+            "line" : 118,
+            "column" : 31,
+            "source_fragment" : "="
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [10],
+          "actions" : ["basic_ml118"],
+          "base_default_next" : "node_4",
+          "next_tables" : {
+            "basic_ml118" : "node_4"
+          },
+          "default_entry" : {
+            "action_id" : 10,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_basic_ml121",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 121,
+            "column" : 34,
+            "source_fragment" : "="
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [7],
+          "actions" : ["basic_ml121"],
+          "base_default_next" : "MyIngress.ml_policy",
+          "next_tables" : {
+            "basic_ml121" : "MyIngress.ml_policy"
+          },
+          "default_entry" : {
+            "action_id" : 7,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_basic_ml123",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 123,
+            "column" : 34,
+            "source_fragment" : "="
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [8],
+          "actions" : ["basic_ml123"],
+          "base_default_next" : "MyIngress.ml_policy",
+          "next_tables" : {
+            "basic_ml123" : "MyIngress.ml_policy"
+          },
+          "default_entry" : {
+            "action_id" : 8,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_basic_ml125",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 125,
+            "column" : 34,
+            "source_fragment" : "="
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [9],
+          "actions" : ["basic_ml125"],
+          "base_default_next" : "MyIngress.ml_policy",
+          "next_tables" : {
+            "basic_ml125" : "MyIngress.ml_policy"
+          },
+          "default_entry" : {
+            "action_id" : 9,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.ml_policy",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 89,
+            "column" : 10,
+            "source_fragment" : "ml_policy"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "meta.packet_class",
+              "target" : ["scalars", "metadata.packet_class"],
+              "mask" : null
+            },
+            {
+              "match_type" : "lpm",
+              "name" : "hdr.ipv4.dstAddr",
+              "target" : ["ipv4", "dstAddr"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "lpm",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [5, 2, 0],
+          "actions" : ["MyIngress.allow_route", "MyIngress.drop", "NoAction"],
+          "base_default_next" : "node_10",
+          "next_tables" : {
+            "MyIngress.allow_route" : "node_10",
+            "MyIngress.drop" : "node_10",
+            "NoAction" : "node_10"
+          },
+          "default_entry" : {
+            "action_id" : 2,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "MyIngress.ipv4_lpm",
+          "id" : 5,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 103,
             "column" : 10,
             "source_fragment" : "ipv4_lpm"
           },
@@ -522,7 +844,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [3, 1, 0],
+          "action_ids" : [6, 3, 1],
           "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
           "base_default_next" : null,
           "next_tables" : {
@@ -531,7 +853,7 @@
             "NoAction" : null
           },
           "default_entry" : {
-            "action_id" : 1,
+            "action_id" : 3,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -539,10 +861,10 @@
         },
         {
           "name" : "tbl_drop",
-          "id" : 1,
+          "id" : 6,
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 100,
+            "line" : 133,
             "column" : 12,
             "source_fragment" : "drop()"
           },
@@ -553,14 +875,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [2],
+          "action_ids" : [4],
           "actions" : ["MyIngress.drop"],
           "base_default_next" : null,
           "next_tables" : {
             "MyIngress.drop" : null
           },
           "default_entry" : {
-            "action_id" : 2,
+            "action_id" : 4,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -574,7 +896,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-            "line" : 97,
+            "line" : 117,
             "column" : 12,
             "source_fragment" : "hdr.ipv4.isValid()"
           },
@@ -589,8 +911,86 @@
               }
             }
           },
-          "true_next" : "MyIngress.ipv4_lpm",
+          "true_next" : "tbl_basic_ml118",
           "false_next" : "tbl_drop"
+        },
+        {
+          "name" : "node_4",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 120,
+            "column" : 16,
+            "source_fragment" : "hdr.ipv4.totalLen <= 256"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "<=",
+              "left" : {
+                "type" : "field",
+                "value" : ["ipv4", "totalLen"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x0100"
+              }
+            }
+          },
+          "true_next" : "tbl_basic_ml121",
+          "false_next" : "node_6"
+        },
+        {
+          "name" : "node_6",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 122,
+            "column" : 23,
+            "source_fragment" : "hdr.ipv4.totalLen <= 500"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "<=",
+              "left" : {
+                "type" : "field",
+                "value" : ["ipv4", "totalLen"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x01f4"
+              }
+            }
+          },
+          "true_next" : "tbl_basic_ml123",
+          "false_next" : "tbl_basic_ml125"
+        },
+        {
+          "name" : "node_10",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
+            "line" : 129,
+            "column" : 16,
+            "source_fragment" : "meta.route_allowed == 1"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["scalars", "metadata.route_allowed"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x01"
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "MyIngress.ipv4_lpm"
         }
       ]
     },
@@ -599,7 +999,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-        "line" : 105,
+        "line" : 138,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -615,7 +1015,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/mnt/e/ATN/p4-mini-project/basic_ml.p4",
-        "line" : 118,
+        "line" : 151,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },

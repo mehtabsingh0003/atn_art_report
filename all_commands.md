@@ -168,6 +168,20 @@ cd /mnt/e/ATN/p4-mini-project
 python3 controller.py --dry-run
 ```
 
+Show an ML drop decision by simulating a larger packet-length feature:
+
+```bash
+cd /mnt/e/ATN/p4-mini-project
+python3 controller.py --dry-run --h2-pkt-len 800
+```
+
+Run the full topology while passing the same ART policy input:
+
+```bash
+cd /mnt/e/ATN/p4-mini-project
+bash run.sh test --h2-pkt-len 800
+```
+
 Install rules into a running BMv2 switch:
 
 ```bash
@@ -315,11 +329,11 @@ This mini-project uses:
 - `simple_switch`
 - `simple_switch_CLI`
 - thrift port `9090`
-- static LPM rule installation through `controller.py`
+- ML-selected `ml_policy` and `ipv4_lpm` rule installation through `controller.py`
 
 It does **not** implement:
 
 - `simple_switch_grpc`
 - P4Runtime gRPC controller setup
-- packet-size-based drop logic
-- ML decision output such as `Packet size: 650 -> DROP`
+- live switch telemetry collection
+- DRL training or full ART decision-tree distillation

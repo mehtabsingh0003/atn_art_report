@@ -34,7 +34,7 @@ from mininet.net import Mininet
 from mininet.topo import Topo
 from p4_mininet import P4Host, P4Switch
 
-from controller import install_rules
+from controller import build_decisions, install_rules, render_decision_report
 
 
 HOSTS = [
@@ -137,6 +137,10 @@ def main() -> int:
     parser.add_argument("--thrift-port", type=int, default=9090)
     parser.add_argument("--no-cli", action="store_true")
     parser.add_argument("--test", action="store_true")
+    parser.add_argument("--no-ml", action="store_true", help="Disable ML policy and allow all demo routes.")
+    parser.add_argument("--h1-pkt-len", type=int, default=128, help="Packet length feature for h1's prefix.")
+    parser.add_argument("--h2-pkt-len", type=int, default=128, help="Packet length feature for h2's prefix.")
+    parser.add_argument("--queue-depth", type=int, default=2, help="Queue-depth feature used by the ML model.")
     args = parser.parse_args()
 
     if not args.behavioral_exe:
@@ -158,7 +162,25 @@ def main() -> int:
         configure_hosts(net)
         sleep(1)
 
-        result = install_rules(args.thrift_port)
+        use_ml = not args.no_ml
+        print(
+            render_decision_report(
+                build_decisions(
+                    h1_pkt_len=args.h1_pkt_len,
+                    h2_pkt_len=args.h2_pkt_len,
+                    queue_depth=args.queue_depth,
+                    use_ml=use_ml,
+                )
+            ),
+            end="",
+        )
+        result = install_rules(
+            args.thrift_port,
+            h1_pkt_len=args.h1_pkt_len,
+            h2_pkt_len=args.h2_pkt_len,
+            queue_depth=args.queue_depth,
+            use_ml=use_ml,
+        )
         if result.stdout:
             print(result.stdout, end="")
         if result.stderr:
